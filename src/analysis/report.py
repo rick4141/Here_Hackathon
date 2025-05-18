@@ -1,95 +1,73 @@
 # src/analysis/report.py
-
 import pandas as pd
-import os
 from datetime import datetime
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-import matplotlib.pyplot as plt
 
-def generate_report(final_df, validated_df, output_dir="output", logger=None):
-    # Crea carpeta por día
-    dt = datetime.now()
-    folder_name = f"{output_dir}/{dt.strftime('%Y%m%d')}"
-    os.makedirs(folder_name, exist_ok=True)
-    report_file = f"{folder_name}/report_ex_{dt.strftime('%Y%m%d_%H%M')}.pdf"
+def generate_report(pois_fixed, validation_results, output_dir, logger=None, html_path=None, **kwargs):
+    """
+    Generates a Bootstrap-styled HTML report for the POI pipeline.
+    """
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    summary = validation_results["violation_code"].value_counts().to_dict()
 
-    # 1. Resumen de escenarios
-    summary = validated_df['violation_type'].value_counts().reset_index()
-    summary.columns = ['Scenario', 'Count']
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>POI Pipeline Report</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>
+        body {{ background: #f9fafb; }}
+        .container {{ margin-top: 40px; }}
+        .table-responsive {{ font-size: 0.98rem; }}
+        .card {{ margin-bottom: 24px; }}
+      </style>
+    </head>
+    <body>
+    <div class="container">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title text-primary mb-3">POI Pipeline Report</h2>
+          <div class="mb-2 text-muted">Generated: {date_str}</div>
+          <div><b>Total POIs Processed:</b> {len(pois_fixed)}</div>
+        </div>
+      </div>
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h4 class="card-title">Validation Summary</h4>
+          <ul>
+            {"".join([f"<li><b>{k}:</b> {v}</li>" for k, v in summary.items()])}
+          </ul>
+        </div>
+      </div>
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h4 class="card-title">Sample of Corrected POIs</h4>
+          <div class="table-responsive">
+            {pois_fixed.head(10).to_html(classes="table table-bordered table-sm", index=False, border=0)}
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h4 class="card-title">Sample of Validation Results</h4>
+          <div class="table-responsive">
+            {validation_results.head(10).to_html(classes="table table-bordered table-sm", index=False, border=0)}
+          </div>
+        </div>
+      </div>
+      <div class="text-center text-secondary mb-4">End of Report</div>
+    </div>
+    </body>
+    </html>
+    """
 
-    # 2. Gráfico de pastel
-    plt.figure(figsize=(6, 6))
-    plt.pie(summary['Count'], labels=summary['Scenario'], autopct='%1.1f%%', colors=plt.cm.Set3.colors)
-    plt.title('POI Scenarios Distribution')
-    pie_chart_path = f"{folder_name}/pie_chart.png"
-    plt.savefig(pie_chart_path)
-    plt.close()
+    # Save as HTML file if requested
+    if html_path:
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html)
+        if logger:
+            logger.info(f"HTML report saved at {html_path}")
 
-    # 3. Crea el PDF
-    c = canvas.Canvas(report_file, pagesize=letter)
-    width, height = letter
-
-    # Header
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(40, height - 50, "POI Quality Assurance Report")
-    c.setFont("Helvetica", 10)
-    c.drawString(40, height - 70, f"Execution Date: {dt.strftime('%Y-%m-%d %H:%M')}")
-    c.drawString(40, height - 85, f"Total POIs processed: {len(validated_df)}")
-
-    # Table header
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(40, height - 120, "Scenario Summary:")
-
-    # Table
-    c.setFont("Helvetica", 10)
-    y = height - 140
-    c.setFillColor(colors.grey)
-    c.rect(40, y, 200, 18, fill=True)
-    c.setFillColor(colors.white)
-    c.drawString(45, y + 4, "Scenario")
-    c.drawString(150, y + 4, "Count")
-    c.setFillColor(colors.black)
-    y -= 20
-
-    for _, row in summary.iterrows():
-        c.drawString(45, y, str(row['Scenario']))
-        c.drawString(150, y, str(row['Count']))
-        y -= 15
-        if y < 100:
-            c.showPage()
-            y = height - 50
-
-    # Add pie chart
-    c.drawImage(pie_chart_path, 300, height - 320, width=250, height=250)
-
-    # Section: Details
-    c.setFont("Helvetica-Bold", 12)
-    y = y - 20 if y > 150 else height - 340
-    c.drawString(40, y, "Scenario Details:")
-    c.setFont("Helvetica", 10)
-    y -= 20
-
-    scenario_dict = {
-        "NO_STREET_MATCH": "Street not found in street dataset. Likely error in street naming.",
-        "WRONG_SIDE_OR_SEGMENT": "POI is associated with a street but the segment/link_id does not match.",
-        "MULTIDIGIT_ERROR": "Segment found but multidigit field was incorrect and was corrected.",
-        "LEGIT_EXCEPTION": "POI exception considered as valid (e.g., special case: hospitals, schools, etc).",
-        "OK": "POI validated with no issues."
-    }
-
-    for scen, desc in scenario_dict.items():
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(45, y, scen)
-        c.setFont("Helvetica", 10)
-        c.drawString(150, y, desc)
-        y -= 15
-
-    c.save()
-    if logger:
-        logger.info(f"PDF report generated: {report_file}")
-
-    # Limpia el gráfico temporal
-    if os.path.exists(pie_chart_path):
-        os.remove(pie_chart_path)
+    return html

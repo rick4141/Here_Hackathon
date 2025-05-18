@@ -1,53 +1,54 @@
 pipeline {
     agent any
+
     environment {
         VENV_DIR = 'venv'
-        PYTHON = "${env.WORKSPACE}/${VENV_DIR}/bin/python"
-        PIP = "${env.WORKSPACE}/${VENV_DIR}/bin/pip"
+        PYTHON = "${WORKSPACE}/${VENV_DIR}/bin/python3"
+        PIP = "${WORKSPACE}/${VENV_DIR}/bin/pip3"
     }
+
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/rick4141/Here_Hackathon.git'
             }
         }
-        stage('Set up Python venv') {
+        stage('Set up Python virtual environment') {
             steps {
                 sh '''
-                python3 -m venv ${VENV_DIR}
-                . ${VENV_DIR}/bin/activate
-                ${PIP} install --upgrade pip
-                ${PIP} install -r requirements.txt
+                    python3 -m venv ${VENV_DIR}
+                    . ${VENV_DIR}/bin/activate
+                    ${PIP} install --upgrade pip
                 '''
             }
         }
-        stage('Lint') {
+        stage('Install Requirements') {
             steps {
                 sh '''
-                . ${VENV_DIR}/bin/activate
-                ${PIP} install flake8
-                ${VENV_DIR}/bin/flake8 api/ src/ main.py || true
+                    . ${VENV_DIR}/bin/activate
+                    ${PIP} install -r requirements.txt
                 '''
             }
         }
-        stage('Run pipeline') {
+        stage('Run Pipeline in Test Mode') {
             steps {
                 sh '''
-                . ${VENV_DIR}/bin/activate
-                ${PYTHON} main.py --pois_dir data/POIs --streets_dir data/STREETS_NAMING_ADDRESSING --output_dir output --test_mode
+                    . ${VENV_DIR}/bin/activate
+                    ${PYTHON} main.py --pois_dir data/POIs --streets_dir data/STREETS_NAMING_ADDRESSING --output_dir output --test_mode
                 '''
             }
         }
     }
+
     post {
         always {
-            archiveArtifacts artifacts: 'output/**/*', fingerprint: true
-            archiveArtifacts artifacts: 'logs/**/*', fingerprint: true
+            archiveArtifacts artifacts: '**/*.log,**/output/**', allowEmptyArchive: true
         }
         failure {
-            mail to: 'tu-email@dominio.com',
-                 subject: "Pipeline failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Check Jenkins for details."
+            echo 'Build failed!'
+        }
+        success {
+            echo 'Build succeeded!'
         }
     }
 }

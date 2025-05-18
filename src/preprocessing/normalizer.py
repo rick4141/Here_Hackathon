@@ -6,42 +6,42 @@ import logging
 
 def normalize_pois(df: pd.DataFrame, logger: logging.Logger = None) -> gpd.GeoDataFrame:
     """
-    Estandariza columnas de POIs y prepara para geocodificación.
-    No crea geometría aquí, solo normaliza nombres y limpia nulos/duplicados.
+    Standardizes POI columns and prepares for geocoding.
+    It doesn't create geometry here; it just normalizes names and cleans up nulls/duplicates.
     """
-    # Estandarizar nombres a minúsculas y quitar espacios
+    # Standardize names to lowercase and remove spaces
     df = df.rename(columns={c: c.strip().lower().replace(" ", "_") for c in df.columns})
     if logger:
-        logger.info(f"Columnas estandarizadas: {list(df.columns)}")
+        logger.info(f"Standardized columns: {list(df.columns)}")
 
-    # (Opcional) Eliminar duplicados o nulos relevantes
+    # (Optional) Remove relevant duplicates or nulls
     df = df.drop_duplicates()
-    df = df.dropna(subset=["st_name"])  # Solo si lo requieres para la geocodificación
+    df = df.dropna(subset=["st_name"]) 
 
-    # Regresa DataFrame para geocodificación posterior
+    # Returns DataFrame for further geocoding
     return df
 
 def normalize_streets(gdf: gpd.GeoDataFrame, logger: logging.Logger = None, target_crs: str = "EPSG:4326") -> gpd.GeoDataFrame:
     """
-    Normaliza un GeoDataFrame de calles:
-    - Estandariza columnas
-    - Reproyecta a WGS84 (EPSG:4326) por defecto
-    - Limpia geometrías inválidas
+    Normalize a GeoDataFrame of streets:
+    - Standardize columns
+    - Reproject to WGS84 (EPSG:4326) by default
+    - Clean up invalid geometries
     """
     gdf = gdf.rename(columns={c: c.strip().lower().replace(" ", "_") for c in gdf.columns})
     if logger:
-        logger.info(f"Columnas estandarizadas en calles: {list(gdf.columns)}")
+        logger.info(f"Standardized columns in streets: {list(gdf.columns)}")
 
-    # Limpia geometrías inválidas
+    # Clean invalid geometries
     if not gdf.empty and (~gdf.is_valid).any():
         gdf = gdf[gdf.is_valid]
         if logger:
-            logger.info(f"Calles inválidas eliminadas")
+            logger.info(f"Invalid streets removed")
 
-    # Reproyecta
+    # Reproject
     if gdf.crs is None or gdf.crs.to_string() != target_crs:
         gdf = gdf.to_crs(target_crs)
         if logger:
-            logger.info(f"Calles reproyectadas a {target_crs}")
+            logger.info(f"Streets reprojected to {target_crs}")
 
     return gdf

@@ -5,7 +5,7 @@ import geopandas as gpd
 
 def find_coord_columns(df: pd.DataFrame):
     """
-    Detecta posibles columnas de latitud/longitud (castellanizados y en inglés).
+    Detects possible latitude/longitude columns (Spanish and English).
     """
     lat_candidates = [c for c in df.columns if c.lower() in ("latitud", "latitude", "lat", "y")]
     lon_candidates = [c for c in df.columns if c.lower() in ("longitud", "longitude", "lon", "lng", "x")]
@@ -13,8 +13,8 @@ def find_coord_columns(df: pd.DataFrame):
 
 def load_pois(poi_dir, logger=None):
     """
-    Carga todos los CSV de POIs y concatena en un DataFrame.
-    Si hay lat/lon, arma un GeoDataFrame, si no, regresa DataFrame normal.
+    Loads all POI CSVs and concatenates them into a DataFrame.
+    If there is a lat/lon, it creates a GeoDataFrame; if not, it returns a regular DataFrame.
     """
     files = glob.glob(os.path.join(poi_dir, "*.csv"))
     dfs = []
@@ -22,7 +22,7 @@ def load_pois(poi_dir, logger=None):
         try:
             df = pd.read_csv(f)
             if logger:
-                logger.info(f"POI CSV cargado: {f}, filas: {len(df)}")
+                logger.info(f"POI CSV loadind: {f}, filas: {len(df)}")
             df['source_file'] = os.path.basename(f)
             dfs.append(df)
         except Exception as e:
@@ -31,17 +31,16 @@ def load_pois(poi_dir, logger=None):
     if not dfs:
         return pd.DataFrame()
     result = pd.concat(dfs, ignore_index=True)
-    # Detecta si hay lat/lon para geopandas
     lat, lon = find_coord_columns(result)
     if lat and lon:
         result = gpd.GeoDataFrame(result, geometry=gpd.points_from_xy(result[lon], result[lat]), crs="EPSG:4326")
         if logger:
-            logger.info("POIs cargados como GeoDataFrame")
+            logger.info("POIs loaded as GeoDataFrame")
     return result
 
 def load_streets(streets_dir, logger=None):
     """
-    Carga todos los GeoJSON de calles y concatena en un GeoDataFrame.
+    Loads all street GeoJSONs and concatenates them into a GeoDataFrame.
     """
     files = glob.glob(os.path.join(streets_dir, "*.geojson"))
     gdfs = []
@@ -49,21 +48,21 @@ def load_streets(streets_dir, logger=None):
         try:
             gdf = gpd.read_file(f)
             if logger:
-                logger.info(f"GeoJSON cargado desde {f}: {len(gdf)} geometrías")
+                logger.info(f"GeoJSON loaded from {f}: {len(gdf)} geometries")
             gdfs.append(gdf)
         except Exception as e:
             if logger:
-                logger.error(f"Error cargando {f}: {e}")
+                logger.error(f"Error loading {f}: {e}")
     if not gdfs:
         return gpd.GeoDataFrame()
     result = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True))
     if logger:
-        logger.info(f"Total geometrías cargadas de {streets_dir}: {len(result)}")
+        logger.info(f"Total geometries loaded with {streets_dir}: {len(result)}")
     return result
 
 def load_any_csv(csv_file, logger=None):
     """
-    Utilidad para cargar cualquier CSV plano (para catálogos, lookups, etc).
+    Utility to load any flat CSV (for catalogs, lookups, etc.).
     """
     try:
         df = pd.read_csv(csv_file)

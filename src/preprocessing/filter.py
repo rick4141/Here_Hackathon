@@ -48,5 +48,5 @@ def enrich_pois_geometry(pois_df: pd.DataFrame, naming_gdf: gpd.GeoDataFrame) ->
             if found:
                 break
     gdf = gpd.GeoDataFrame(pois_df, geometry='geometry', crs=naming_gdf.crs or 'EPSG:4326')
-    logger.info(f"POIs geocodificados: {gdf['geometry'].notnull().sum()} de {len(gdf)}")
+    logger.info(f"POIs geocodificated: {gdf['geometry'].notnull().sum()} de {len(gdf)}")
     return gdf

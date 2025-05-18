@@ -24,7 +24,6 @@ function pollLogs() {
     logs.scrollTop = logs.scrollHeight;
     updateStatus(status);
 
-    // Mostrar último reporte en iframe
     let frame = document.getElementById("report-frame");
     if (frame && status.last_report) {
       frame.style.display = 'block';
@@ -55,11 +54,9 @@ function stopPipeline() {
   fetch('/stop_pipeline', {method: 'POST'})
     .then(res => res.json())
     .then(data => {
-      // Opcional: Notificación
     });
 }
 
-// Para historial
 function loadHistory() {
   fetch('/history/reports').then(res => res.json()).then(data => {
     let list = document.getElementById('history-reports');

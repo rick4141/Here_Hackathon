@@ -6,7 +6,7 @@ from .interpolator import interpolate_point_on_line
 
 def geocode_pois(pois_df: pd.DataFrame, streets_gdf: gpd.GeoDataFrame, logger=None) -> gpd.GeoDataFrame:
     """
-    Geocodifica POIs interpolando sobre los segmentos de calle.
+    Geocodes POIs by interpolating over street segments.
     """
     geocoded = []
     for idx, poi in pois_df.iterrows():
@@ -17,17 +17,17 @@ def geocode_pois(pois_df: pd.DataFrame, streets_gdf: gpd.GeoDataFrame, logger=No
         except:
             poi_num = np.nan
 
-        # Busca segmento de calle
+        # Search street segment
         segments = streets_gdf[streets_gdf['st_name'].str.upper().str.strip() == street_name]
         if segments.empty:
             geom = None
         else:
-            # Busca en todos los segmentos y elige el primero que contenga el número en su rango
+            # Search all segments and choose the first one that contains the number in its range
             geom = None
             for _, seg in segments.iterrows():
                 min_num = seg['l_nrefaddr'] if seg['l_nrefaddr'] else seg['r_nrefaddr']
                 max_num = seg['l_refaddr']  if seg['l_refaddr']  else seg['r_refaddr']
-                # Trata los campos como números
+                # Treat fields as numbers
                 try:
                     min_num, max_num = int(min_num), int(max_num)
                 except:
@@ -41,5 +41,5 @@ def geocode_pois(pois_df: pd.DataFrame, streets_gdf: gpd.GeoDataFrame, logger=No
         row['geometry'] = geom if geom else None
         geocoded.append(row)
         if logger and idx % 1000 == 0:
-            logger.info(f"{idx+1} POIs procesados")
+            logger.info(f"{idx+1} POIs processed")
     return gpd.GeoDataFrame(geocoded, geometry='geometry', crs=streets_gdf.crs)

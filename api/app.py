@@ -61,24 +61,24 @@ def show_last_report():
         return FileResponse(last_html, media_type="text/html")
     return JSONResponse({"error": "No report found"}, status_code=404)
 
-# Historial de reportes
+# Report History
 @app.get("/history/reports")
 def report_history():
     return get_report_history()
 
-# Historial de logs
+# Logs History
 @app.get("/history/logs")
 def log_history():
     return get_log_history()
 
-# Descargar log file por path
+# Download files
 @app.get("/logfile")
 def download_logfile(path: str):
     if os.path.exists(path):
         return FileResponse(path, media_type="text/plain")
     return JSONResponse({"error": "Log not found"}, status_code=404)
 
-# Descargar reporte HTML o PDF
+# HTML
 @app.get("/download_report")
 def download_report(path: str):
     if os.path.exists(path):
@@ -86,7 +86,7 @@ def download_report(path: str):
         return FileResponse(path, media_type=media)
     return JSONResponse({"error": "Report not found"}, status_code=404)
 
-# Botón de paro de emergencia
+# Emergency Stop
 @app.post("/stop_pipeline")
 def stop_pipeline():
     pipeline_status["emergency_stop"] = True
